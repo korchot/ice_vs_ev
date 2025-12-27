@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>วิเคราะห์พฤติกรรมการขับขี่ & EV Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        .typing-indicator span {
+            display: inline-block; width: 8px; height: 8px; background-color: #3b82f6;
+            border-radius: 50%; animation: typing 1s infinite ease-in-out both; margin: 0 2px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        /* Slider Styling */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #4f46e5; cursor: pointer; margin-top: -6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #e5e7eb; border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">🚗 วิเคราะห์การใช้งาน & เปรียบเทียบ EV</h1>
+                <p class="text-gray-600 text-sm">ข้อมูล: รถน้ำมัน | เทียบกับ Tesla Model 3 (DC Charging)</p>
+            </div>
+        </div>
+
+        <!-- NEW: EV Comparison Simulator -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                <h2 class="text-lg font-bold"><i class="fas fa-calculator mr-2"></i>เครื่องคำนวณความคุ้มค่า (TCO Calculator)</h2>
+                <span class="text-xs bg-yellow-500 text-black px-2 py-1 rounded font-bold">รวมค่าซ่อมบำรุงแล้ว</span>
+            </div>
+            
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Controls -->
+                <div class="space-y-6">
+                    <!-- Section 1: Mileage -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-600">ระยะทางต่อปี</span>
+                            <span class="font-bold text-blue-600" id="disp_dist">12,500 กม.</span>
+                        </div>
+                        <input type="range" id="input_dist" min="5000" max="50000" step="500" value="12500" oninput="calculateEV()" class="w-full">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Current Car -->
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h3 class="font-bold text-gray-700 text-sm mb-3 border-b pb-2">🏎️ รถคันเดิม (Toyota)</h3>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 block">กินน้ำมัน (km/L)</label>
+                                    <input type="number" id="input_ice_eff" value="12" oninput="calculateEV()" class="w-full text-sm p-1 border rounded">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ราคาน้ำมัน (บาท/L)</label>
+                                    <input type="number" id="input_gas_price" value="31" oninput="calculateEV()" class="w-full text-sm p-1 border rounded">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ประกันภัย (บาท/ปี)</label>
+                                    <input type="number" id="input_ice_ins" value="8000" oninput="calculateEV()" class="w-full text-sm p-1 border rounded bg-yellow-50">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ซ่อมบำรุง (บาท/ปี)</label>
+                                    <input type="number" id="input_ice_maint" value="10000" oninput="calculateEV()" class="w-full text-sm p-1 border rounded bg-green-50">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- EV Car -->
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <h3 class="font-bold text-blue-800 text-sm mb-3 border-b border-blue-200 pb-2">⚡ Tesla Model 3 LR</h3>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ค่าชาร์จ DC (บาท/หน่วย)</label>
+                                    <input type="number" id="input_ev_price" value="8.02" step="0.5" oninput="calculateEV()" class="w-full text-sm p-1 border rounded">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">กินไฟ (km/kWh)</label>
+                                    <input type="number" id="input_ev_eff" value="8.5" step="0.1" oninput="calculateEV()" class="w-full text-sm p-1 border rounded">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ประกันภัย (บาท/ปี)</label>
+                                    <input type="number" id="input_ev_ins" value="32000" oninput="calculateEV()" class="w-full text-sm p-1 border rounded bg-yellow-50">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 block">ซ่อมบำรุง (บาท/ปี)</label>
+                                    <input type="number" id="input_ev_maint" value="2000" oninput="calculateEV()" class="w-full text-sm p-1 border rounded bg-green-50">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="flex flex-col justify-center">
+                    <canvas id="costChart" height="240"></canvas>
+                    
+                    <div id="resultBox" class="mt-4 p-4 rounded-lg text-center transition-all duration-300">
+                        <!-- Content injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Assistant Section -->
+        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-md p-6 border border-indigo-100">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg"><i class="fas fa-robot text-xl"></i></div>
+                <h2 class="text-xl font-bold text-gray-800">AI ผู้ช่วย (Gemini)</h2>
+            </div>
+            
+            <div class="bg-white rounded-lg border border-gray-200 shadow-inner h-64 overflow-y-auto p-4 mb-4" id="chatBox">
+                <div class="text-center text-gray-400 mt-20">
+                    <p>ถามเรื่องความคุ้มค่า หรือปัญหาการชาร์จได้เลยครับ</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="userInput" placeholder="เช่น 'ถ้าลดค่าประกัน Tesla เหลือ 25000 จะคุ้มไหม?'" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button onclick="sendUserMessage()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">ส่ง</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Gemini & Chat Logic ---
+        const chatBox = document.getElementById('chatBox');
+        const apiKey = ""; // API Key
+
+        async function callGemini(userPrompt) {
+            // Get current simulator values for context
+            const dist = document.getElementById('input_dist').value;
+            const iceIns = document.getElementById('input_ice_ins').value;
+            const iceMaint = document.getElementById('input_ice_maint').value;
+            const evIns = document.getElementById('input_ev_ins').value;
+            const evMaint = document.getElementById('input_ev_maint').value;
+            
+            const systemInstruction = `
+                Role: Expert Car Consultant & Financial Analyst (Thai Language).
+                Context: User drives ${dist} km/year. Comparing Tesla Model 3 RWD LR vs Toyota.
+                Constraint: User uses DC Charging 100% of the time.
+                Cost Data:
+                - Toyota: Insurance ${iceIns}, Maintenance ${iceMaint} THB/yr
+                - Tesla: Insurance ${evIns}, Maintenance ${evMaint} THB/yr
+                
+                Tone: Helpful, realistic, focusing on "Total Cost of Ownership".
+                If the user asks about break-even, explain that insurance is the main killer in this specific scenario.
+            `;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userPrompt }] }],
+                        systemInstruction: { parts: [{ text: systemInstruction }] }
+                    })
+                });
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) { return "ระบบขัดข้องชั่วคราวครับ"; }
+        }
+
+        function appendMessage(sender, text, isMarkdown = false) {
+            if (chatBox.querySelector('.text-center')) chatBox.innerHTML = '';
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] rounded-lg p-3 ${sender === 'user' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800 markdown-body'}`;
+            if (isMarkdown) bubble.innerHTML = marked.parse(text);
+            else bubble.textContent = text;
+            msgDiv.appendChild(bubble);
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendUserMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            appendMessage('user', text);
+            
+            // Typing Indicator
+            const typingId = 'typing-' + Date.now();
+            const tDiv = document.createElement('div');
+            tDiv.id = typingId;
+            tDiv.className = 'flex justify-start mb-4';
+            tDiv.innerHTML = '<div class="bg-gray-100 rounded-lg p-4"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
+            chatBox.appendChild(tDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const response = await callGemini(text);
+            document.getElementById(typingId).remove();
+            appendMessage('ai', response, true);
+        }
+
+        document.getElementById('userInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendUserMessage(); });
+
+        // --- Simulator Logic ---
+        let costChart;
+
+        function initSimulator() {
+            const ctx = document.getElementById('costChart').getContext('2d');
+            costChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Toyota (เดิม)', 'Tesla (DC Charge)'],
+                    datasets: [
+                        { label: 'ค่าเชื้อเพลิง (บาท)', data: [0, 0], backgroundColor: '#ef4444' }, // Red
+                        { label: 'ค่าประกันภัย (บาท)', data: [0, 0], backgroundColor: '#f59e0b' },  // Orange
+                        { label: 'ค่าซ่อมบำรุง (บาท)', data: [0, 0], backgroundColor: '#10b981' }   // Green
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                    plugins: { tooltip: { mode: 'index', intersect: false } }
+                }
+            });
+            calculateEV();
+        }
+
+        function calculateEV() {
+            // Inputs
+            const distance = parseFloat(document.getElementById('input_dist').value);
+            document.getElementById('disp_dist').innerText = distance.toLocaleString() + " กม.";
+
+            // ICE Calc
+            const iceEff = parseFloat(document.getElementById('input_ice_eff').value);
+            const gasPrice = parseFloat(document.getElementById('input_gas_price').value);
+            const iceIns = parseFloat(document.getElementById('input_ice_ins').value);
+            const iceMaint = parseFloat(document.getElementById('input_ice_maint').value);
+            
+            const iceFuelCost = (distance / iceEff) * gasPrice;
+            const iceTotal = iceFuelCost + iceIns + iceMaint;
+
+            // EV Calc
+            const evEff = parseFloat(document.getElementById('input_ev_eff').value);
+            const evPrice = parseFloat(document.getElementById('input_ev_price').value);
+            const evIns = parseFloat(document.getElementById('input_ev_ins').value);
+            const evMaint = parseFloat(document.getElementById('input_ev_maint').value);
+
+            const evEnergyCost = (distance / evEff) * evPrice;
+            const evTotal = evEnergyCost + evIns + evMaint;
+
+            // Update Chart (Datasets: 0=Fuel, 1=Ins, 2=Maint)
+            costChart.data.datasets[0].data = [iceFuelCost, evEnergyCost];
+            costChart.data.datasets[1].data = [iceIns, evIns];
+            costChart.data.datasets[2].data = [iceMaint, evMaint];
+            costChart.update();
+
+            // Calculate Break Even
+            const fixedCostDiff = (evIns + evMaint) - (iceIns + iceMaint); // EV usually higher
+            const varCostPerKm_Ice = gasPrice / iceEff;
+            const varCostPerKm_Ev = evPrice / evEff;
+            const savingPerKm = varCostPerKm_Ice - varCostPerKm_Ev;
+            
+            const breakEvenDist = fixedCostDiff / savingPerKm;
+
+            // Update Result Box
+            const diff = iceTotal - evTotal;
+            const box = document.getElementById('resultBox');
+            
+            if (diff > 0) {
+                // EV Cheaper
+                box.className = "mt-4 p-4 rounded-lg text-center bg-green-100 border border-green-300";
+                box.innerHTML = `
+                    <h3 class="text-green-800 font-bold text-lg">✅ ประหยัดขึ้น ${diff.toLocaleString()} บาท/ปี</h3>
+                    <p class="text-green-700 text-sm">รวมค่าซ่อมบำรุงแล้ว EV คุ้มกว่า</p>
+                `;
+            } else {
+                // ICE Cheaper
+                box.className = "mt-4 p-4 rounded-lg text-center bg-red-100 border border-red-300";
+                
+                let breakEvenText = "";
+                if (savingPerKm > 0) {
+                    breakEvenText = `ต้องวิ่งให้เกิน <b>${Math.ceil(breakEvenDist).toLocaleString()} กม./ปี</b> ถึงจะคุ้มทุน`;
+                } else {
+                    breakEvenText = "ค่าเชื้อเพลิง EV แพงกว่า (เป็นไปได้ยาก)";
+                }
+
+                box.innerHTML = `
+                    <h3 class="text-red-800 font-bold text-lg">❌ แพงกว่าเดิม ${Math.abs(diff).toLocaleString()} บาท/ปี</h3>
+                    <p class="text-red-700 text-sm">ประกัน Tesla แพงกว่ามากจนกลบส่วนต่างค่าไฟและค่าซ่อม</p>
+                    <p class="text-xs text-gray-500 mt-2 bg-white/50 p-2 rounded inline-block">${breakEvenText}</p>
+                `;
+            }
+        }
+
+        // Init
+        window.onload = initSimulator;
+
+    </script>
+</body>
+</html>
