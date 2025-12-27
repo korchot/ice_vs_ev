@@ -6,19 +6,10 @@
     <title>วิเคราะห์พฤติกรรมการขับขี่ & EV Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
         body { font-family: 'Sarabun', sans-serif; }
-        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-        .typing-indicator span {
-            display: inline-block; width: 8px; height: 8px; background-color: #3b82f6;
-            border-radius: 50%; animation: typing 1s infinite ease-in-out both; margin: 0 2px;
-        }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
         
         /* Slider Styling */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
@@ -43,7 +34,7 @@
             </div>
         </div>
 
-        <!-- NEW: EV Comparison Simulator -->
+        <!-- EV Comparison Simulator -->
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
                 <h2 class="text-lg font-bold"><i class="fas fa-calculator mr-2"></i>เครื่องคำนวณความคุ้มค่า (TCO Calculator)</h2>
@@ -125,103 +116,9 @@
             </div>
         </div>
 
-        <!-- AI Assistant Section -->
-        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl shadow-md p-6 border border-indigo-100">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="bg-indigo-600 text-white p-2 rounded-lg"><i class="fas fa-robot text-xl"></i></div>
-                <h2 class="text-xl font-bold text-gray-800">AI ผู้ช่วย (Gemini)</h2>
-            </div>
-            
-            <div class="bg-white rounded-lg border border-gray-200 shadow-inner h-64 overflow-y-auto p-4 mb-4" id="chatBox">
-                <div class="text-center text-gray-400 mt-20">
-                    <p>ถามเรื่องความคุ้มค่า หรือปัญหาการชาร์จได้เลยครับ</p>
-                </div>
-            </div>
-
-            <div class="flex gap-2">
-                <input type="text" id="userInput" placeholder="เช่น 'ถ้าลดค่าประกัน Tesla เหลือ 25000 จะคุ้มไหม?'" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button onclick="sendUserMessage()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">ส่ง</button>
-            </div>
-        </div>
-
     </div>
 
     <script>
-        // --- Gemini & Chat Logic ---
-        const chatBox = document.getElementById('chatBox');
-        const apiKey = ""; // API Key
-
-        async function callGemini(userPrompt) {
-            // Get current simulator values for context
-            const dist = document.getElementById('input_dist').value;
-            const iceIns = document.getElementById('input_ice_ins').value;
-            const iceMaint = document.getElementById('input_ice_maint').value;
-            const evIns = document.getElementById('input_ev_ins').value;
-            const evMaint = document.getElementById('input_ev_maint').value;
-            
-            const systemInstruction = `
-                Role: Expert Car Consultant & Financial Analyst (Thai Language).
-                Context: User drives ${dist} km/year. Comparing Tesla Model 3 RWD LR vs Toyota.
-                Constraint: User uses DC Charging 100% of the time.
-                Cost Data:
-                - Toyota: Insurance ${iceIns}, Maintenance ${iceMaint} THB/yr
-                - Tesla: Insurance ${evIns}, Maintenance ${evMaint} THB/yr
-                
-                Tone: Helpful, realistic, focusing on "Total Cost of Ownership".
-                If the user asks about break-even, explain that insurance is the main killer in this specific scenario.
-            `;
-
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: userPrompt }] }],
-                        systemInstruction: { parts: [{ text: systemInstruction }] }
-                    })
-                });
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) { return "ระบบขัดข้องชั่วคราวครับ"; }
-        }
-
-        function appendMessage(sender, text, isMarkdown = false) {
-            if (chatBox.querySelector('.text-center')) chatBox.innerHTML = '';
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
-            const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] rounded-lg p-3 ${sender === 'user' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800 markdown-body'}`;
-            if (isMarkdown) bubble.innerHTML = marked.parse(text);
-            else bubble.textContent = text;
-            msgDiv.appendChild(bubble);
-            chatBox.appendChild(msgDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        async function sendUserMessage() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text) return;
-            input.value = '';
-            appendMessage('user', text);
-            
-            // Typing Indicator
-            const typingId = 'typing-' + Date.now();
-            const tDiv = document.createElement('div');
-            tDiv.id = typingId;
-            tDiv.className = 'flex justify-start mb-4';
-            tDiv.innerHTML = '<div class="bg-gray-100 rounded-lg p-4"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
-            chatBox.appendChild(tDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            const response = await callGemini(text);
-            document.getElementById(typingId).remove();
-            appendMessage('ai', response, true);
-        }
-
-        document.getElementById('userInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendUserMessage(); });
-
         // --- Simulator Logic ---
         let costChart;
 
