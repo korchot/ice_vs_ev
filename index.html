@@ -30,7 +30,7 @@
         <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">🚗 วิเคราะห์การใช้งาน & เปรียบเทียบ EV</h1>
-                <p class="text-gray-600 text-sm">ข้อมูล: รถน้ำมัน | เทียบกับ Tesla Model 3 (DC Charging)</p>
+                <p class="text-gray-600 text-sm">ข้อมูลเปรียบเทียบ: รถยนต์สันดาป (ICE) | รถยนต์ไฟฟ้า (EV)</p>
             </div>
         </div>
 
@@ -57,7 +57,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <!-- Current Car -->
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h3 class="font-bold text-gray-700 text-sm mb-3 border-b pb-2">🏎️ รถคันเดิม (Toyota)</h3>
+                            <h3 class="font-bold text-gray-700 text-sm mb-3 border-b pb-2">🏎️ ICE</h3>
                             
                             <div class="space-y-3">
                                 <div>
@@ -81,7 +81,7 @@
 
                         <!-- EV Car -->
                         <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <h3 class="font-bold text-blue-800 text-sm mb-3 border-b border-blue-200 pb-2">⚡ Tesla Model 3 LR</h3>
+                            <h3 class="font-bold text-blue-800 text-sm mb-3 border-b border-blue-200 pb-2">⚡ EV</h3>
                             
                             <div class="space-y-3">
                                 <div>
@@ -127,7 +127,7 @@
             costChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Toyota (เดิม)', 'Tesla (DC Charge)'],
+                    labels: ['ICE', 'EV'],
                     datasets: [
                         { label: 'ค่าเชื้อเพลิง (บาท)', data: [0, 0], backgroundColor: '#ef4444' }, // Red
                         { label: 'ค่าประกันภัย (บาท)', data: [0, 0], backgroundColor: '#f59e0b' },  // Orange
@@ -216,3 +216,4 @@
     </script>
 </body>
 </html>
+
